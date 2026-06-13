@@ -1,0 +1,9 @@
+graph,structure,time_ms
+graph_10k.txt,std::vector,1.65203
+graph_10k.txt,HashBag,1.60684
+graph_100k.txt,std::vector,15.8179
+graph_100k.txt,HashBag,15.5073
+graph_1M.txt,std::vector,192.777
+graph_1M.txt,HashBag,203.38
+lattice_10k.txt,std::vector,0.433962
+lattice_10k.txt,HashBag,0.376618

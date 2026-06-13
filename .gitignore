@@ -1,0 +1,33 @@
+# Binarios y directorios de compilación
+build/
+bin/
+*.o
+*.a
+*.out
+
+# Resultados de experimentos (evitar subir datos locales masivos)
+results/*.csv
+results/figures/*.png
+
+# Archivos de sistema y editores
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Datos temporales
+data/social/*
+data/web/*
+data/knn/*
+data/lattice/*
+!data/*.txt
+!data/small_graph.txt

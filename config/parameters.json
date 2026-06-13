@@ -1,0 +1,5 @@
+{
+  "default_tau": 512,
+  "default_threads": 4,
+  "iterations": 3
+}

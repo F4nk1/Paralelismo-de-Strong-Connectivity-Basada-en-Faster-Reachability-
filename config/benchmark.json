@@ -1,0 +1,10 @@
+{
+  "tau_values": [64, 128, 256, 512, 1024, 2048],
+  "thread_counts": [1, 2, 4, 8, 16],
+  "graphs": [
+    "datasets/synthetic/graph_10k.txt",
+    "datasets/synthetic/graph_100k.txt",
+    "datasets/synthetic/graph_1M.txt",
+    "datasets/synthetic/lattice_10k.txt"
+  ]
+}

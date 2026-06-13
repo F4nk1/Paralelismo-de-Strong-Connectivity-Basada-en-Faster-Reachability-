@@ -1,0 +1,12 @@
+{
+  "synthetic": [
+    "datasets/synthetic/graph_1k.txt",
+    "datasets/synthetic/graph_10k.txt",
+    "datasets/synthetic/graph_100k.txt"
+  ],
+  "real": [
+    "datasets/real/web_graph.txt",
+    "datasets/real/social_graph.txt",
+    "datasets/real/road_network.txt"
+  ]
+}
