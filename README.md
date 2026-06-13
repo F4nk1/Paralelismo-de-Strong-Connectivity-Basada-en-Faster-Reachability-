@@ -2,7 +2,7 @@
 
 Este proyecto implementa y evalúa algoritmos paralelos para la detección de **Componentes Fuertemente Conexas (SCC)** en grafos dirigidos, basándose en el paper de Wang et al. (2023).
 
-## 🚀 Ejecución Ultra-Rápida (Automatizada)
+## Ejecución Ultra-Rápida (Automatizada)
 
 Para simplificar el proceso, se ha incluido un script maestro que realiza la configuración del entorno, compilación, descarga de datos, validación y generación de gráficos con un solo comando:
 
@@ -13,7 +13,7 @@ chmod +x run_all.sh
 
 ---
 
-## 🛠️ Detalles del Sistema
+## Detalles del Sistema
 
 ### Algoritmos y Características
 - **Modelos**: Tarjan (Base), BGSS (Paralelo), VGC (Granularidad Vertical).
@@ -26,19 +26,19 @@ chmod +x run_all.sh
 - **Python 3**: Para generación de gráficos (`pandas`, `matplotlib`).
 - **Sistema**: Linux (probado en Arch y Debian).
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 - `src/`: Implementación de algoritmos en C++.
 - `config/`: Parámetros experimentales en formato JSON.
 - `results/`: Salidas generadas (CSV y Gráficos PNG).
 - `docs/`: Documentación técnica profunda sobre la implementación y resultados.
 - `tests/`: Suite de pruebas de correctitud.
 
-## 🧪 Pasos Manuales (Opcional)
+## Pasos Manuales (Opcional)
 Si desea ejecutar fases específicas:
 1. **Compilar**: `mkdir build && cd build && cmake .. && make`
 2. **Entorno Python**: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 3. **Descargar Datos**: `bash scripts/download_datasets.sh`
 4. **Gráficos**: `python3 scripts/generate_plots.py`
 
-## 📄 Licencia
+## Licencia
 Este proyecto está bajo la Licencia MIT. Consulte el archivo `LICENSE` para más detalles.
