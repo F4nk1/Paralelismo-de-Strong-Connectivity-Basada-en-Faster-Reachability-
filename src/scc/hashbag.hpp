@@ -37,19 +37,25 @@ public:
         size_t h = hash(key);
         while (true) {
             K current_key = __sync_val_compare_and_swap(&m_table[h].key, static_cast<K>(-1), key);
-            if (current_key == static_cast<K>(-1) || current_key == key) {
-                // Si la llave es la misma o acabamos de reservarla, intentamos escribir el valor
-                // Para Multi-Search, a veces queremos el valor mínimo o máximo
-                V current_val = m_table[h].value;
-                if (value < current_val) { // Ejemplo: quedarnos con el pivote de menor ID
-                    __sync_val_compare_and_swap(&m_table[h].value, current_val, value);
-                }
-                if (current_key == static_cast<K>(-1)) m_size++;
+            if (current_key == static_cast<K>(-1)) {
+                // Nueva entrada
+                m_table[h].value = value;
+                m_size++;
                 return true;
+            }
+            if (current_key == key) {
+                // Llave existente, intentar actualizar si el nuevo valor es menor
+                V old_val = m_table[h].value;
+                while (value < old_val) {
+                    if (__sync_bool_compare_and_swap(&m_table[h].value, old_val, value)) {
+                        return true;
+                    }
+                    old_val = m_table[h].value;
+                }
+                return false;
             }
             h = (h + 1) % m_capacity; // Linear probing
         }
-        return false;
     }
 
     bool contains(K key, V value) const {

@@ -71,28 +71,45 @@ std::vector<int> MultiBGSS::find_sccs(const graph::Graph& g, double beta, benchm
     auto total_start = std::chrono::high_resolution_clock::now();
     int n = g.num_vertices;
     std::vector<int> scc_map(n, -1);
-    std::vector<int> labels(n, -1);
     std::vector<char> handled(n, 0);
-    std::atomic<int> scc_count(0);
     int handled_count = 0;
 
     graph::Graph g_rev = g.transpose();
 
-    // 1. Trimming (igual que en BGSS para consistencia)
+    // 1. Trimming (Simplificado: nodos con grado 0)
     auto trim_start = std::chrono::high_resolution_clock::now();
-    // ... (Podríamos reutilizar el código de trimming o simplificarlo aquí)
+    #pragma omp parallel for reduction(+:handled_count)
+    for (int i = 0; i < n; i++) {
+        long long out_deg = g.offsets[i+1] - g.offsets[i];
+        long long in_deg = g_rev.offsets[i+1] - g_rev.offsets[i];
+        if (out_deg == 0 || in_deg == 0) {
+            scc_map[i] = i;
+            handled[i] = 1;
+            handled_count++;
+        }
+    }
     auto trim_end = std::chrono::high_resolution_clock::now();
     if (breakdown) breakdown->trimming += std::chrono::duration<double, std::milli>(trim_end - trim_start).count();
 
     // 2. Selección de Pivotes Aleatorios (Estrategia GBBS)
     std::vector<int> p;
     for (int i = 0; i < n; i++) if (!handled[i]) p.push_back(i);
-    std::shuffle(p.begin(), p.end(), std::mt19937(std::random_device()()));
+    std::shuffle(p.begin(), p.end(), std::mt19937(12345)); // Semilla fija para reproducibilidad
 
     size_t cur_offset = 0;
     size_t step_size = 1;
     
-    while (handled_count < n && cur_offset < p.size()) {
+    while (handled_count < n) {
+        if (cur_offset >= p.size()) {
+            // Re-escaneo de nodos no manejados si se acabó p
+            p.clear();
+            for (int i = 0; i < n; i++) if (!handled[i]) p.push_back(i);
+            if (p.empty()) break;
+            std::shuffle(p.begin(), p.end(), std::mt19937(std::random_device()()));
+            cur_offset = 0;
+            step_size = 1;
+        }
+
         size_t end = std::min(cur_offset + step_size, p.size());
         std::vector<int> centers;
         for (size_t i = cur_offset; i < end; i++) {
@@ -105,8 +122,8 @@ std::vector<int> MultiBGSS::find_sccs(const graph::Graph& g, double beta, benchm
             continue;
         }
 
-        ConcurrentHashTable<int, int> fw_table(n * 2);
-        ConcurrentHashTable<int, int> bw_table(n * 2);
+        ConcurrentHashTable<int, int> fw_table(n * 2 + 1);
+        ConcurrentHashTable<int, int> bw_table(n * 2 + 1);
 
         auto reach_start = std::chrono::high_resolution_clock::now();
         multi_search(g, handled, scc_map, centers, fw_table);
@@ -116,27 +133,29 @@ std::vector<int> MultiBGSS::find_sccs(const graph::Graph& g, double beta, benchm
 
         // Intersección de etiquetas para encontrar SCCs
         auto label_start = std::chrono::high_resolution_clock::now();
-        #pragma omp parallel for
+        #pragma omp parallel for reduction(+:handled_count)
         for (int i = 0; i < n; i++) {
             if (handled[i]) continue;
-            // Si un nodo i fue alcanzado por el mismo pivote en FW y BW, es un SCC
+            
             int fw_label = -1, bw_label = -1;
-            // (Búsqueda en tablas simplificada)
+            // Búsqueda en tabla FW
             size_t h_fw = fw_table.hash(i);
-            while (fw_table.get_table()[h_fw].key != -1) {
-                if (fw_table.get_table()[h_fw].key == i) { fw_label = fw_table.get_table()[h_fw].value; break; }
-                h_fw = (h_fw + 1) % fw_table.get_table().size();
+            const auto& fw_raw = fw_table.get_table();
+            while (fw_raw[h_fw].key != -1) {
+                if (fw_raw[h_fw].key == i) { fw_label = fw_raw[h_fw].value; break; }
+                h_fw = (h_fw + 1) % fw_raw.size();
             }
+            // Búsqueda en tabla BW
             size_t h_bw = bw_table.hash(i);
-            while (bw_table.get_table()[h_bw].key != -1) {
-                if (bw_table.get_table()[h_bw].key == i) { bw_label = bw_table.get_table()[h_bw].value; break; }
-                h_bw = (h_bw + 1) % bw_table.get_table().size();
+            const auto& bw_raw = bw_table.get_table();
+            while (bw_raw[h_bw].key != -1) {
+                if (bw_raw[h_bw].key == i) { bw_label = bw_raw[h_bw].value; break; }
+                h_bw = (h_bw + 1) % bw_raw.size();
             }
 
             if (fw_label != -1 && fw_label == bw_label) {
-                scc_map[i] = fw_label; // Simplificación: usamos el ID del pivote como ID de SCC
+                scc_map[i] = fw_label;
                 handled[i] = 1;
-                #pragma omp atomic
                 handled_count++;
             }
         }

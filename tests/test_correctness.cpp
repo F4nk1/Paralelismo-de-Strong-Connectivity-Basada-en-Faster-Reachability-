@@ -6,6 +6,7 @@
 #include "scc/tarjan.hpp"
 #include "scc/bgss.hpp"
 #include "scc/vgc.hpp"
+#include "scc/multi_bgss.hpp"
 
 using namespace std;
 
@@ -40,14 +41,17 @@ void test_graph(const string& name, const graph::Graph& g) {
     auto scc_tarjan = scc::Tarjan::find_sccs(g);
     auto scc_bgss = scc::BGSS::find_sccs(g);
     auto scc_vgc = scc::VGC::run_parallel_scc(g, 10); // Tau pequeño para forzar paralelo
+    auto scc_multi = scc::MultiBGSS::find_sccs(g);
     
     bool bgss_ok = compare_sccs(scc_tarjan, scc_bgss);
     bool vgc_ok = compare_sccs(scc_tarjan, scc_vgc);
+    bool multi_ok = compare_sccs(scc_tarjan, scc_multi);
     
-    cout << "  BGSS: " << (bgss_ok ? "PASSED" : "FAILED") << endl;
-    cout << "  VGC:  " << (vgc_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  BGSS:  " << (bgss_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  VGC:   " << (vgc_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  Multi: " << (multi_ok ? "PASSED" : "FAILED") << endl;
     
-    if (!bgss_ok || !vgc_ok) {
+    if (!bgss_ok || !vgc_ok || !multi_ok) {
         exit(1);
     }
 }

@@ -14,6 +14,7 @@ add_executable(parallel_scc
     src/scc/tarjan.cpp
     src/scc/bgss.cpp
     src/scc/vgc.cpp
+    src/scc/multi_bgss.cpp
     src/scc/hashbag.cpp
     src/benchmark/metrics.cpp
 )
@@ -32,6 +33,7 @@ add_executable(test_correctness
     src/scc/tarjan.cpp
     src/scc/bgss.cpp
     src/scc/vgc.cpp
+    src/scc/multi_bgss.cpp
 )
 target_link_libraries(test_correctness OpenMP::OpenMP_CXX)
 
