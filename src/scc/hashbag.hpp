@@ -5,12 +5,14 @@
 #include <atomic>
 #include <omp.h>
 #include <tuple>
+#include <cstdint>
 
 namespace scc {
 
 /**
- * @brief Implementación de una Tabla de Hash Concurrente mínima para Multi-Search.
- * Basada en el concepto de resizable_table de GBBS.
+ * @brief Implementación de una Tabla de Hash Concurrente para Multi-Search.
+ * Soporta múltiples valores para la misma llave, almacenando pares (key, value).
+ * Optimizado para 64 bits usando atomics.
  */
 template <typename K, typename V>
 class ConcurrentHashTable {
@@ -21,57 +23,78 @@ public:
     };
 
     ConcurrentHashTable(size_t capacity) : m_capacity(capacity), m_size(0) {
-        m_table.resize(m_capacity, {static_cast<K>(-1), static_cast<V>(-1)});
+        // Aseguramos que capacity sea potencia de 2 para hash rápido (opcional, pero recomendado)
+        m_table = new std::atomic<uint64_t>[m_capacity];
+        for (size_t i = 0; i < m_capacity; ++i) {
+            m_table[i].store(combine(-1, -1), std::memory_order_relaxed);
+        }
     }
 
-    // Hash simple de 32 bits (ajustable)
-    size_t hash(K key) const {
-        size_t x = static_cast<size_t>(key);
-        x = ((x >> 16) ^ x) * 0x45d9f3b;
-        x = ((x >> 16) ^ x) * 0x45d9f3b;
-        x = (x >> 16) ^ x;
+    ~ConcurrentHashTable() {
+        delete[] m_table;
+    }
+
+    // No permitir copia por el manejo de memoria manual
+    ConcurrentHashTable(const ConcurrentHashTable&) = delete;
+    ConcurrentHashTable& operator=(const ConcurrentHashTable&) = delete;
+
+    inline uint64_t combine(K key, V value) const {
+        return (static_cast<uint64_t>(static_cast<uint32_t>(key)) << 32) | 
+               static_cast<uint64_t>(static_cast<uint32_t>(value));
+    }
+
+    inline std::pair<K, V> separate(uint64_t val) const {
+        return {static_cast<K>(val >> 32), static_cast<V>(val & 0xFFFFFFFF)};
+    }
+
+    // Hash de la pareja (key, value) para distribuir mejor
+    inline size_t hash_pair(K key, V value) const {
+        uint64_t x = combine(key, value);
+        x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+        x = x ^ (x >> 31);
         return x % m_capacity;
     }
 
     bool insert(K key, V value) {
-        size_t h = hash(key);
+        uint64_t new_entry = combine(key, value);
+        uint64_t empty_entry = combine(-1, -1);
+        size_t h = hash_pair(key, value);
+
         while (true) {
-            K current_key = __sync_val_compare_and_swap(&m_table[h].key, static_cast<K>(-1), key);
-            if (current_key == static_cast<K>(-1)) {
-                // Nueva entrada
-                m_table[h].value = value;
-                m_size++;
+            uint64_t expected = empty_entry;
+            if (m_table[h].compare_exchange_strong(expected, new_entry, std::memory_order_relaxed)) {
+                m_size.fetch_add(1, std::memory_order_relaxed);
                 return true;
             }
-            if (current_key == key) {
-                // Llave existente, intentar actualizar si el nuevo valor es menor
-                V old_val = m_table[h].value;
-                while (value < old_val) {
-                    if (__sync_bool_compare_and_swap(&m_table[h].value, old_val, value)) {
-                        return true;
-                    }
-                    old_val = m_table[h].value;
-                }
-                return false;
+            if (expected == new_entry) {
+                return false; // Ya existe el par (key, value)
             }
-            h = (h + 1) % m_capacity; // Linear probing
+            h = (h + 1) % m_capacity;
         }
     }
 
     bool contains(K key, V value) const {
-        size_t h = hash(key);
-        while (m_table[h].key != static_cast<K>(-1)) {
-            if (m_table[h].key == key && m_table[h].value == value) return true;
+        uint64_t target = combine(key, value);
+        uint64_t empty_entry = combine(-1, -1);
+        size_t h = hash_pair(key, value);
+
+        while (true) {
+            uint64_t current = m_table[h].load(std::memory_order_relaxed);
+            if (current == target) return true;
+            if (current == empty_entry) return false;
             h = (h + 1) % m_capacity;
         }
-        return false;
     }
 
-    const std::vector<Entry>& get_table() const { return m_table; }
     size_t size() const { return m_size.load(); }
+    size_t capacity() const { return m_capacity; }
+
+    // Para iterar sobre la tabla
+    std::atomic<uint64_t>* get_raw_table() { return m_table; }
 
 private:
-    std::vector<Entry> m_table;
+    std::atomic<uint64_t>* m_table;
     size_t m_capacity;
     std::atomic<size_t> m_size;
 };
