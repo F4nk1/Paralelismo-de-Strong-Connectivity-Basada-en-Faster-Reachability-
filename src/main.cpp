@@ -18,10 +18,13 @@ using namespace std;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
+#include <set>
+
 int count_sccs(const vector<int>& map_scc) {
-    int m = -1;
-    for (int id : map_scc) if (id > m) m = id;
-    return (m == -1) ? 0 : m + 1;
+    if (map_scc.empty()) return 0;
+    set<int> unique_ids;
+    for (int id : map_scc) if (id != -1) unique_ids.insert(id);
+    return unique_ids.size();
 }
 
 int get_max_scc_size(const vector<int>& scc_map) {
@@ -146,8 +149,13 @@ int main(int argc, char** argv) {
         }
     }
 
-    benchmark::save_results_to_csv(all_results, "results/csv/benchmarks_dual.csv");
-    benchmark::save_breakdown_to_csv(all_results, "results/csv/breakdown_dual.csv");
+    benchmark::save_results_to_csv(all_results, "results/csv/benchmarks.csv");
+    benchmark::save_breakdown_to_csv(all_results, "results/csv/breakdown.csv");
+    benchmark::save_scalability_to_csv(all_results, "results/csv/scalability.csv");
+    
+    // Generar datos para VGC y HashBag vs Vector (casos especiales)
+    // Estos podrían requerir bucles adicionales si se desea un análisis profundo
+    
     cout << "\n[OK] Benchmarking finalizado. Archivos generados en results/csv/" << endl;
 
     return 0;

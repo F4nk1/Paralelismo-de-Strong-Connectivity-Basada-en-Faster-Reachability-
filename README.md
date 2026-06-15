@@ -2,6 +2,12 @@
 
 Este proyecto implementa y evalúa algoritmos paralelos para la detección de **Componentes Fuertemente Conexas (SCC)** en grafos dirigidos, basándose en el paper de Wang et al. (2023).
 
+## Resultados y Análisis
+El sistema genera automáticamente un análisis detallado tras ejecutar los experimentos:
+- **Gráficos (Español):** Disponibles en `results/plots/` (Aceleración, Eficiencia, Desglose, etc.).
+- **Reporte de Análisis:** Consulte `results/reports/analisis_experimental.md` para una interpretación científica de los datos.
+- **CSV:** Datos crudos en `results/csv/`.
+
 ## Ejecución Ultra-Rápida (Automatizada)
 
 Para simplificar el proceso, se ha incluido un script maestro que realiza la configuración del entorno, compilación, descarga de datos, validación y generación de gráficos con un solo comando:
