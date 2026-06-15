@@ -7,17 +7,18 @@ namespace benchmark {
 
 void save_results_to_csv(const std::vector<Result>& results, const std::string& filename) {
     std::ofstream file(filename);
-    file << "algorithm,graph,nodes,edges,threads,tau,time_ms,num_sccs,correct\n";
+    file << "algorithm,graph,nodes,edges,threads,tau,time_ms,num_sccs,max_scc_size,throughput,trim_count,correct\n";
     for (const auto& res : results) {
         file << res.algorithm << "," << res.graph_name << "," << res.vertices << "," << res.edges << "," 
              << res.threads << "," << res.tau << "," << res.time_ms << "," 
-             << res.scc_count << "," << (res.correct ? "YES" : "NO") << "\n";
+             << res.scc_count << "," << res.max_scc_size << "," << res.throughput << "," << res.trim_count << "," 
+             << (res.correct ? "YES" : "NO") << "\n";
     }
 }
 
 void save_breakdown_to_csv(const std::vector<Result>& results, const std::string& filename) {
     std::ofstream file(filename);
-    file << "algorithm,graph,trimming,forward_reach,backward_reach,reachability,labeling,hash_bag,others,total\n";
+    file << "algorithm,graph,trimming,forward_reach,backward_reach,reachability,labeling,hash_bag,big_scc,others,total\n";
     for (const auto& res : results) {
         file << res.algorithm << "," << res.graph_name << "," 
              << res.breakdown.trimming << "," 
@@ -26,6 +27,7 @@ void save_breakdown_to_csv(const std::vector<Result>& results, const std::string
              << res.breakdown.reachability << "," 
              << res.breakdown.labeling << "," 
              << res.breakdown.hash_bag << "," 
+             << res.breakdown.big_scc << "," 
              << res.breakdown.others << "," 
              << res.breakdown.total << "\n";
     }

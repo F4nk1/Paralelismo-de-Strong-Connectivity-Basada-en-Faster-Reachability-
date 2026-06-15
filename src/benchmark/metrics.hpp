@@ -13,11 +13,12 @@ struct Breakdown {
     double reachability = 0.0; // Total
     double labeling = 0.0;
     double hash_bag = 0.0;
+    double big_scc = 0.0;      // Tiempo dedicado al Big SCC
     double others = 0.0;
     double total = 0.0;
 
     void reset() {
-        trimming = forward_reachability = backward_reachability = reachability = labeling = hash_bag = others = total = 0.0;
+        trimming = forward_reachability = backward_reachability = reachability = labeling = hash_bag = big_scc = others = total = 0.0;
     }
 };
 
@@ -30,6 +31,9 @@ struct Result {
     int tau;
     double time_ms;
     int scc_count;
+    int max_scc_size = 0;      // Tamaño del SCC más grande
+    double throughput = 0.0;   // Millones de aristas por segundo
+    int trim_count = 0;        // Vértices eliminados por trimming
     bool correct;
     Breakdown breakdown;
 };
