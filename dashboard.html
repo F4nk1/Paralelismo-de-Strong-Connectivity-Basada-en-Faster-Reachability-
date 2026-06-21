@@ -375,6 +375,9 @@
                 alert("Error: results/dashboard_data.js no encontrado. Ejecute ./run_all.sh primero.");
                 return;
             }
+            // Filter VGC benchmarks to exclude duplicate tau analysis runs
+            dashboardData.benchmarks = dashboardData.benchmarks.filter(b => b.algorithm !== 'VGC' || b.tau === 512);
+            
             initializeSelectors();
             updateDashboard();
         });
@@ -710,11 +713,11 @@
             destroyChart('speedup');
             const ctx = document.getElementById('chart-speedup').getContext('2d');
             
-            // Filter scalability for this graph, ignoring Tarjan/Vector comparisons
-            const dataForGraph = dashboardData.scalability.filter(s => s.graph === graph && s.algorithm !== 'Tarjan' && !s.algorithm.includes('BGSS ('));
+            // Filter benchmarks for this graph and core algorithms
+            const dataForGraph = dashboardData.benchmarks.filter(b => b.graph === graph && ['BGSS-BigSCC', 'BGSS-BigSCC-HashBag', 'BGSS-MultiSearch', 'VGC'].includes(b.algorithm));
             
-            const algos = [...new Set(dataForGraph.map(s => s.algorithm))];
-            const threadsList = [...new Set(dataForGraph.map(s => s.threads))].sort((a,b) => a-b);
+            const algos = ['BGSS-BigSCC', 'BGSS-BigSCC-HashBag', 'BGSS-MultiSearch', 'VGC'];
+            const threadsList = [...new Set(dataForGraph.map(b => b.threads))].sort((a,b) => a-b);
             
             const colorMap = {
                 'BGSS-BigSCC': '#3b82f6',
@@ -724,15 +727,21 @@
             };
             
             const datasets = algos.map(algo => {
-                const algoData = dataForGraph.filter(s => s.algorithm === algo);
-                const finalData = threadsList.map(t => {
+                const algoData = dataForGraph.filter(b => b.algorithm === algo);
+                
+                // Find baseline (time at 1 thread of this algorithm)
+                const baseEntry = algoData.find(d => d.threads === 1);
+                const baseTime = baseEntry ? baseEntry.time_ms : null;
+                
+                const speedupData = threadsList.map(t => {
+                    if (!baseTime) return null;
                     const match = algoData.find(d => d.threads === t);
-                    return match ? match.speedup : null;
+                    return match ? baseTime / match.time_ms : null;
                 });
                 
                 return {
                     label: algo,
-                    data: finalData,
+                    data: speedupData,
                     borderColor: colorMap[algo] || '#ffffff',
                     backgroundColor: colorMap[algo] || '#ffffff',
                     borderWidth: 3,
@@ -785,10 +794,11 @@
             destroyChart('efficiency');
             const ctx = document.getElementById('chart-efficiency').getContext('2d');
             
-            const dataForGraph = dashboardData.scalability.filter(s => s.graph === graph && s.algorithm !== 'Tarjan' && !s.algorithm.includes('BGSS ('));
+            // Filter benchmarks for this graph and core algorithms
+            const dataForGraph = dashboardData.benchmarks.filter(b => b.graph === graph && ['BGSS-BigSCC', 'BGSS-BigSCC-HashBag', 'BGSS-MultiSearch', 'VGC'].includes(b.algorithm));
             
-            const algos = [...new Set(dataForGraph.map(s => s.algorithm))];
-            const threadsList = [...new Set(dataForGraph.map(s => s.threads))].sort((a,b) => a-b);
+            const algos = ['BGSS-BigSCC', 'BGSS-BigSCC-HashBag', 'BGSS-MultiSearch', 'VGC'];
+            const threadsList = [...new Set(dataForGraph.map(b => b.threads))].sort((a,b) => a-b);
             
             const colorMap = {
                 'BGSS-BigSCC': '#3b82f6',
@@ -798,15 +808,21 @@
             };
             
             const datasets = algos.map(algo => {
-                const algoData = dataForGraph.filter(s => s.algorithm === algo);
-                const finalData = threadsList.map(t => {
+                const algoData = dataForGraph.filter(b => b.algorithm === algo);
+                
+                // Find baseline (time at 1 thread of this algorithm)
+                const baseEntry = algoData.find(d => d.threads === 1);
+                const baseTime = baseEntry ? baseEntry.time_ms : null;
+                
+                const efficiencyData = threadsList.map(t => {
+                    if (!baseTime) return null;
                     const match = algoData.find(d => d.threads === t);
-                    return match ? match.efficiency : null;
+                    return match ? (baseTime / match.time_ms) / t : null;
                 });
                 
                 return {
                     label: algo,
-                    data: finalData,
+                    data: efficiencyData,
                     borderColor: colorMap[algo] || '#ffffff',
                     backgroundColor: colorMap[algo] || '#ffffff',
                     borderWidth: 3,
