@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel SCC Experimentation Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        /* Ambient background glow */
+        .glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(0,0,0,0) 70%);
+            top: -100px;
+            right: -100px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-title h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.25rem;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        select {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            outline: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            min-width: 200px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Dashboard grid layout */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .metric-subtext {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Tabs System */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            gap: 1.5rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            padding: 0.75rem 0.5rem;
+            cursor: pointer;
+            position: relative;
+            white-space: nowrap;
+            transition: color 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--accent-blue);
+        }
+
+        /* Layout panels */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            position: relative;
+            width: 100%;
+            min-height: 450px;
+            margin-bottom: 2rem;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        footer {
+            margin-top: 4rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 2rem;
+        }
+
+        /* Responsive styling */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="glow"></div>
+    
+    <header>
+        <div class="header-title">
+            <h1>Dashboard Experimental: Paralelismo en SCC</h1>
+            <p>Análisis interactivo de conectividad fuerte, algoritmos duales y escalabilidad</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="graph-select">Grafo / Dataset</label>
+                <select id="graph-select" onchange="onDataSetChange()">
+                    <!-- Se poblará con JS -->
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="threads-select">Hilos para Comparación</label>
+                <select id="threads-select" onchange="onThreadsChange()">
+                    <!-- Se poblará con JS -->
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Cards de Métricas Rápidas -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <span class="metric-label">Vértices (N)</span>
+            <div class="metric-value" id="metric-nodes">-</div>
+            <span class="metric-subtext">Tamaño del grafo seleccionado</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Aristas (M)</span>
+            <div class="metric-value" id="metric-edges">-</div>
+            <span class="metric-subtext">Conexiones dirigidas</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Aceleración Máxima</span>
+            <div class="metric-value text-accent-green" id="metric-speedup">-</div>
+            <span class="metric-subtext" id="metric-speedup-algo">Algoritmo vs. Tarjan</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Configuración Óptima</span>
+            <div class="metric-value text-accent-purple" id="metric-optimal">-</div>
+            <span class="metric-subtext" id="metric-optimal-algo">Hilos más eficientes</span>
+        </div>
+    </div>
+
+    <!-- Pestañas -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab-runtime')">Tiempo & Rendimiento</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-scalability')">Aceleración & Eficiencia</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-breakdown')">Desglose de Fases (Breakdown)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-vector-hashbag')">Vector vs. HashBag</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-tau-vgc')">Análisis de Tau (VGC)</button>
+    </div>
+
+    <!-- Pestaña 1: Tiempo & Rendimiento -->
+    <div id="tab-runtime" class="tab-content active">
+        <div class="charts-row">
+            <div class="chart-container">
+                <canvas id="chart-comparison-total"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="chart-throughput"></canvas>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="chart-runtime-vs-threads"></canvas>
+        </div>
+    </div>
+
+    <!-- Pestaña 2: Aceleración & Eficiencia -->
+    <div id="tab-scalability" class="tab-content">
+        <div class="charts-row">
+            <div class="chart-container">
+                <canvas id="chart-speedup"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="chart-efficiency"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña 3: Desglose de Fases -->
+    <div id="tab-breakdown" class="tab-content">
+        <div class="chart-container">
+            <canvas id="chart-breakdown"></canvas>
+        </div>
+    </div>
+
+    <!-- Pestaña 4: Vector vs. HashBag -->
+    <div id="tab-vector-hashbag" class="tab-content">
+        <div class="chart-container">
+            <canvas id="chart-hashbag-vs-vector"></canvas>
+        </div>
+    </div>
+
+    <!-- Pestaña 5: VGC Tau Analysis -->
+    <div id="tab-tau-vgc" class="tab-content">
+        <div class="chart-container">
+            <canvas id="chart-tau-analysis"></canvas>
+        </div>
+    </div>
+
+    <footer>
+        <p>Parallel SCC Benchmarking Framework | Diseñado bajo estética profesional y métricas exactas</p>
+    </footer>
+
+    <!-- Cargar Datos del Dashboard -->
+    <script src="results/dashboard_data.js"></script>
+    <script>
+        // Global variables for chart instances
+        const charts = {};
+
+        // On document load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof dashboardData === 'undefined') {
+                alert("Error: results/dashboard_data.js no encontrado. Ejecute ./run_all.sh primero.");
+                return;
+            }
+            initializeSelectors();
+            updateDashboard();
+        });
+
+        function initializeSelectors() {
+            const graphSelect = document.getElementById('graph-select');
+            const threadsSelect = document.getElementById('threads-select');
+            
+            // Get unique graphs
+            const graphs = [...new Set(dashboardData.benchmarks.map(b => b.graph))];
+            graphSelect.innerHTML = graphs.map(g => `<option value="${g}">${g}</option>`).join('');
+            
+            // Get unique threads (excluding Tarjan which is always 1, but let's list all threads available)
+            const threads = [...new Set(dashboardData.benchmarks.map(b => b.threads))].sort((a,b) => a - b);
+            threadsSelect.innerHTML = threads.map(t => `<option value="${t}">${t} Hilo(s)</option>`).join('');
+            
+            // Set default thread select to max
+            const maxThread = Math.max(...threads);
+            threadsSelect.value = maxThread;
+        }
+
+        function switchTab(evt, tabId) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(c => c.classList.remove('active'));
+            
+            // Deactivate all tab buttons
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            
+            // Show active tab and content
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+            
+            // Re-render chart on tab click to ensure proper sizing
+            renderChartsForTab(tabId);
+        }
+
+        function onDataSetChange() {
+            updateDashboard();
+        }
+
+        function onThreadsChange() {
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            const currentGraph = document.getElementById('graph-select').value;
+            const currentThreads = parseInt(document.getElementById('threads-select').value);
+            
+            // Filter benchmarks for metrics
+            const graphBenchmarks = dashboardData.benchmarks.filter(b => b.graph === currentGraph);
+            if (graphBenchmarks.length === 0) return;
+            
+            const firstEntry = graphBenchmarks[0];
+            document.getElementById('metric-nodes').innerText = firstEntry.nodes.toLocaleString();
+            document.getElementById('metric-edges').innerText = firstEntry.edges.toLocaleString();
+            
+            // Find Tarjan sequential time
+            const tarjanEntry = graphBenchmarks.find(b => b.algorithm === 'Tarjan');
+            const tarjanTime = tarjanEntry ? tarjanEntry.time_ms : 0;
+            
+            // Filter benchmarks for the selected thread count
+            const threadBenchmarks = graphBenchmarks.filter(b => b.threads === currentThreads);
+            
+            // Find optimal configuration for this thread count
+            let minTime = Infinity;
+            let optimalAlgo = '';
+            
+            // Find speedup for this thread count
+            let bestSpeedup = 0;
+            let bestSpeedupAlgo = '';
+            
+            threadBenchmarks.forEach(b => {
+                if (b.algorithm !== 'Tarjan') {
+                    if (b.time_ms < minTime) {
+                        minTime = b.time_ms;
+                        optimalAlgo = b.algorithm;
+                    }
+                    if (tarjanTime > 0) {
+                        const speedup = tarjanTime / b.time_ms;
+                        if (speedup > bestSpeedup) {
+                            bestSpeedup = speedup;
+                            bestSpeedupAlgo = b.algorithm;
+                        }
+                    }
+                }
+            });
+            
+            document.getElementById('metric-optimal').innerText = optimalAlgo || '-';
+            document.getElementById('metric-optimal-algo').innerText = minTime !== Infinity ? `${minTime.toFixed(1)} ms (con ${currentThreads}H)` : '-';
+            
+            if (bestSpeedup > 0) {
+                document.getElementById('metric-speedup').innerText = `${bestSpeedup.toFixed(2)}x`;
+                document.getElementById('metric-speedup-algo').innerText = `de ${bestSpeedupAlgo} con ${currentThreads}H vs. Tarjan`;
+            } else {
+                document.getElementById('metric-speedup').innerText = '1.00x';
+                document.getElementById('metric-speedup-algo').innerText = 'Sin aceleración';
+            }
+            
+            // Render active tab charts
+            const activeTabButton = document.querySelector('.tab-btn.active');
+            const activeTabName = activeTabButton.innerText.trim();
+            
+            if (activeTabName.includes('Tiempo')) {
+                renderChartsForTab('tab-runtime');
+            } else if (activeTabName.includes('Aceleración')) {
+                renderChartsForTab('tab-scalability');
+            } else if (activeTabName.includes('Desglose')) {
+                renderChartsForTab('tab-breakdown');
+            } else if (activeTabName.includes('Vector')) {
+                renderChartsForTab('tab-vector-hashbag');
+            } else if (activeTabName.includes('Tau')) {
+                renderChartsForTab('tab-tau-vgc');
+            }
+        }
+
+        function renderChartsForTab(tabId) {
+            const currentGraph = document.getElementById('graph-select').value;
+            const currentThreads = parseInt(document.getElementById('threads-select').value);
+
+            if (tabId === 'tab-runtime') {
+                renderComparisonTotalChart(currentGraph, currentThreads);
+                renderThroughputChart(currentGraph, currentThreads);
+                renderRuntimeVsThreadsChart(currentGraph);
+            } else if (tabId === 'tab-scalability') {
+                renderSpeedupChart(currentGraph);
+                renderEfficiencyChart(currentGraph);
+            } else if (tabId === 'tab-breakdown') {
+                renderBreakdownChart(currentGraph, currentThreads);
+            } else if (tabId === 'tab-vector-hashbag') {
+                renderVectorHashbagChart(currentGraph);
+            } else if (tabId === 'tab-tau-vgc') {
+                renderTauAnalysisChart(currentGraph);
+            }
+        }
+
+        // --- Chart Render Functions ---
+
+        function destroyChart(chartId) {
+            if (charts[chartId]) {
+                charts[chartId].destroy();
+                delete charts[chartId];
+            }
+        }
+
+        function renderComparisonTotalChart(graph, threads) {
+            destroyChart('comparison-total');
+            const ctx = document.getElementById('chart-comparison-total').getContext('2d');
+            
+            // Filter benchmarks for this graph and either Tarjan (which is 1 thread) or the selected thread count
+            const dataForGraph = dashboardData.benchmarks.filter(b => b.graph === graph);
+            const tarjanVal = dataForGraph.find(b => b.algorithm === 'Tarjan');
+            const parallelVals = dataForGraph.filter(b => b.threads === threads && b.algorithm !== 'Tarjan' && !b.algorithm.includes('BGSS ('));
+
+            const labels = [];
+            const times = [];
+            const colors = ['#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444'];
+            
+            if (tarjanVal) {
+                labels.push('Tarjan (1H)');
+                times.push(tarjanVal.time_ms);
+            }
+            
+            parallelVals.forEach(v => {
+                labels.push(`${v.algorithm} (${v.threads}H)`);
+                times.push(v.time_ms);
+            });
+            
+            charts['comparison-total'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tiempo de Ejecución (ms)',
+                        data: times,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: `Comparación de Tiempos de Ejecución (Hilos: ${threads})`, color: '#f8fafc', font: { size: 14, weight: 'bold' } }
+                    },
+                    scales: {
+                        y: { 
+                            title: { display: true, text: 'Tiempo (ms)', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' }, 
+                            grid: { color: 'rgba(255,255,255,0.05)' } 
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false } 
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderThroughputChart(graph, threads) {
+            destroyChart('throughput');
+            const ctx = document.getElementById('chart-throughput').getContext('2d');
+            
+            const dataForGraph = dashboardData.benchmarks.filter(b => b.graph === graph);
+            const tarjanVal = dataForGraph.find(b => b.algorithm === 'Tarjan');
+            const parallelVals = dataForGraph.filter(b => b.threads === threads && b.algorithm !== 'Tarjan' && !b.algorithm.includes('BGSS ('));
+
+            const labels = [];
+            const throughput = [];
+            const colors = ['#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444'];
+            
+            if (tarjanVal) {
+                labels.push('Tarjan (1H)');
+                throughput.push(tarjanVal.throughput);
+            }
+            
+            parallelVals.forEach(v => {
+                labels.push(`${v.algorithm} (${v.threads}H)`);
+                throughput.push(v.throughput);
+            });
+            
+            charts['throughput'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Throughput (M-aristas/s)',
+                        data: throughput,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: `Throughput de Ejecución (Hilos: ${threads})`, color: '#f8fafc', font: { size: 14, weight: 'bold' } }
+                    },
+                    scales: {
+                        y: { 
+                            title: { display: true, text: 'Rendimiento (M-edges/s)', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' }, 
+                            grid: { color: 'rgba(255,255,255,0.05)' } 
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false } 
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderRuntimeVsThreadsChart(graph) {
+            destroyChart('runtime-vs-threads');
+            const ctx = document.getElementById('chart-runtime-vs-threads').getContext('2d');
+            
+            const dataForGraph = dashboardData.benchmarks.filter(b => b.graph === graph && !b.algorithm.includes('BGSS ('));
+            
+            // Get unique algorithms and threads
+            const algos = [...new Set(dataForGraph.map(b => b.algorithm))];
+            const threadsList = [...new Set(dataForGraph.map(b => b.threads))].sort((a,b) => a-b);
+            
+            const colorMap = {
+                'Tarjan': '#f59e0b',
+                'BGSS-BigSCC': '#3b82f6',
+                'BGSS-BigSCC-HashBag': '#8b5cf6',
+                'BGSS-MultiSearch': '#10b981',
+                'VGC': '#ef4444'
+            };
+            
+            const datasets = algos.map(algo => {
+                const algoData = dataForGraph.filter(b => b.algorithm === algo);
+                
+                // For Tarjan, replicate time across all thread counts so it shows as a flat baseline
+                let finalData = [];
+                if (algo === 'Tarjan') {
+                    const tarjanTime = algoData[0] ? algoData[0].time_ms : null;
+                    finalData = threadsList.map(t => tarjanTime);
+                } else {
+                    finalData = threadsList.map(t => {
+                        const match = algoData.find(d => d.threads === t);
+                        return match ? match.time_ms : null;
+                    });
+                }
+                
+                return {
+                    label: algo,
+                    data: finalData,
+                    borderColor: colorMap[algo] || '#ffffff',
+                    backgroundColor: colorMap[algo] || '#ffffff',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 5
+                };
+            });
+            
+            charts['runtime-vs-threads'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: threadsList.map(t => `${t} Hilos`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Tiempo de Ejecución vs. Número de Hilos', color: '#f8fafc', font: { size: 16, weight: 'bold' } },
+                        legend: { labels: { color: '#f8fafc' } }
+                    },
+                    scales: {
+                        y: { 
+                            type: 'logarithmic',
+                            title: { display: true, text: 'Tiempo en ms (Escala Log)', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderSpeedupChart(graph) {
+            destroyChart('speedup');
+            const ctx = document.getElementById('chart-speedup').getContext('2d');
+            
+            // Filter scalability for this graph, ignoring Tarjan/Vector comparisons
+            const dataForGraph = dashboardData.scalability.filter(s => s.graph === graph && s.algorithm !== 'Tarjan' && !s.algorithm.includes('BGSS ('));
+            
+            const algos = [...new Set(dataForGraph.map(s => s.algorithm))];
+            const threadsList = [...new Set(dataForGraph.map(s => s.threads))].sort((a,b) => a-b);
+            
+            const colorMap = {
+                'BGSS-BigSCC': '#3b82f6',
+                'BGSS-BigSCC-HashBag': '#8b5cf6',
+                'BGSS-MultiSearch': '#10b981',
+                'VGC': '#ef4444'
+            };
+            
+            const datasets = algos.map(algo => {
+                const algoData = dataForGraph.filter(s => s.algorithm === algo);
+                const finalData = threadsList.map(t => {
+                    const match = algoData.find(d => d.threads === t);
+                    return match ? match.speedup : null;
+                });
+                
+                return {
+                    label: algo,
+                    data: finalData,
+                    borderColor: colorMap[algo] || '#ffffff',
+                    backgroundColor: colorMap[algo] || '#ffffff',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 5
+                };
+            });
+            
+            // Add Ideal Line
+            datasets.push({
+                label: 'Aceleración Ideal',
+                data: threadsList,
+                borderColor: '#475569',
+                borderDash: [5, 5],
+                fill: false,
+                pointRadius: 0,
+                borderWidth: 2
+            });
+            
+            charts['speedup'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: threadsList.map(t => `${t} Hilos`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Aceleración Paralela (Speedup)', color: '#f8fafc', font: { size: 14, weight: 'bold' } },
+                        legend: { labels: { color: '#f8fafc' } }
+                    },
+                    scales: {
+                        y: { 
+                            title: { display: true, text: 'Speedup', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderEfficiencyChart(graph) {
+            destroyChart('efficiency');
+            const ctx = document.getElementById('chart-efficiency').getContext('2d');
+            
+            const dataForGraph = dashboardData.scalability.filter(s => s.graph === graph && s.algorithm !== 'Tarjan' && !s.algorithm.includes('BGSS ('));
+            
+            const algos = [...new Set(dataForGraph.map(s => s.algorithm))];
+            const threadsList = [...new Set(dataForGraph.map(s => s.threads))].sort((a,b) => a-b);
+            
+            const colorMap = {
+                'BGSS-BigSCC': '#3b82f6',
+                'BGSS-BigSCC-HashBag': '#8b5cf6',
+                'BGSS-MultiSearch': '#10b981',
+                'VGC': '#ef4444'
+            };
+            
+            const datasets = algos.map(algo => {
+                const algoData = dataForGraph.filter(s => s.algorithm === algo);
+                const finalData = threadsList.map(t => {
+                    const match = algoData.find(d => d.threads === t);
+                    return match ? match.efficiency : null;
+                });
+                
+                return {
+                    label: algo,
+                    data: finalData,
+                    borderColor: colorMap[algo] || '#ffffff',
+                    backgroundColor: colorMap[algo] || '#ffffff',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 5
+                };
+            });
+            
+            // Add 100% Efficiency baseline
+            datasets.push({
+                label: '100% Eficiencia',
+                data: threadsList.map(() => 1.0),
+                borderColor: '#ef4444',
+                borderDash: [3, 3],
+                fill: false,
+                pointRadius: 0,
+                borderWidth: 1.5
+            });
+            
+            charts['efficiency'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: threadsList.map(t => `${t} Hilos`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Eficiencia Paralela (Speedup / Hilos)', color: '#f8fafc', font: { size: 14, weight: 'bold' } },
+                        legend: { labels: { color: '#f8fafc' } }
+                    },
+                    scales: {
+                        y: { 
+                            suggestedMax: 1.2,
+                            suggestedMin: 0,
+                            title: { display: true, text: 'Eficiencia (1.0 = 100%)', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderBreakdownChart(graph, threads) {
+            destroyChart('breakdown');
+            const ctx = document.getElementById('chart-breakdown').getContext('2d');
+            
+            // Filter breakdown for this graph and selected threads
+            // Or get the last computed run
+            const dataForGraph = dashboardData.breakdown.filter(b => b.graph === graph && b.algorithm !== 'Tarjan' && !b.algorithm.includes('BGSS ('));
+            
+            const algos = [...new Set(dataForGraph.map(b => b.algorithm))];
+            
+            // We want to load the entries corresponding to the chosen thread count
+            // The breakdown CSV might not store thread counts directly, but we can match them via total time from benchmarks CSV
+            const matchedEntries = [];
+            algos.forEach(algo => {
+                // Find target total time for this graph, algo, threads in benchmarks
+                const matchBench = dashboardData.benchmarks.find(b => b.graph === graph && b.algorithm === algo && b.threads === threads);
+                if (matchBench) {
+                    // Find the breakdown entry closest in total time
+                    const matchBDs = dataForGraph.filter(b => b.algorithm === algo);
+                    let bestMatch = null;
+                    let minDiff = Infinity;
+                    matchBDs.forEach(bd => {
+                        const diff = Math.abs(bd.total - matchBench.time_ms);
+                        if (diff < minDiff) {
+                            minDiff = diff;
+                            bestMatch = bd;
+                        }
+                    });
+                    if (bestMatch) {
+                        matchedEntries.push(bestMatch);
+                    }
+                }
+            });
+
+            // Phases keys
+            const phases = [
+                { key: 'trimming', label: 'Trimming', color: '#e2e8f0' },
+                { key: 'forward_reach', label: 'Alcance FW', color: '#60a5fa' },
+                { key: 'backward_reach', label: 'Alcance BW', color: '#34d399' },
+                { key: 'reachability', label: 'Alcance / MultiSearch', color: '#8b5cf6' },
+                { key: 'labeling', label: 'Etiquetado', color: '#f59e0b' },
+                { key: 'hash_bag', label: 'HashBag', color: '#a78bfa' },
+                { key: 'big_scc', label: 'Big SCC', color: '#ec4899' },
+                { key: 'others', label: 'Otros', color: '#6b7280' }
+            ];
+
+            const datasets = phases.map(phase => {
+                return {
+                    label: phase.label,
+                    data: matchedEntries.map(entry => entry[phase.key] || 0),
+                    backgroundColor: phase.color,
+                    borderRadius: 4
+                };
+            });
+
+            charts['breakdown'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: matchedEntries.map(entry => entry.algorithm),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: `Desglose de Tiempo de Ejecución por Fases (Hilos: ${threads})`, color: '#f8fafc', font: { size: 16, weight: 'bold' } },
+                        legend: { position: 'right', labels: { color: '#f8fafc' } }
+                    },
+                    scales: {
+                        y: { 
+                            stacked: true,
+                            title: { display: true, text: 'Tiempo (ms)', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: { 
+                            stacked: true,
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderVectorHashbagChart(graph) {
+            destroyChart('hashbag-vs-vector');
+            const ctx = document.getElementById('chart-hashbag-vs-vector').getContext('2d');
+            
+            const dataForGraph = dashboardData.hashbag_vs_vector.filter(h => h.graph === graph);
+            
+            const threadsList = [...new Set(dataForGraph.map(h => h.threads))].sort((a,b) => a-b);
+            const vectorTimes = threadsList.map(t => {
+                const match = dataForGraph.find(h => h.threads === t && h.structure === 'std::vector');
+                return match ? match.time_ms : null;
+            });
+            const hashbagTimes = threadsList.map(t => {
+                const match = dataForGraph.find(h => h.threads === t && h.structure === 'HashBag');
+                return match ? match.time_ms : null;
+            });
+            
+            charts['hashbag-vs-vector'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: threadsList.map(t => `${t} Hilos`),
+                    datasets: [
+                        {
+                            label: 'std::vector (Copia Local)',
+                            data: vectorTimes,
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#3b82f6',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 5
+                        },
+                        {
+                            label: 'HashBag Concurrente (Atomic)',
+                            data: hashbagTimes,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: '#8b5cf6',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Estructura de la Frontera BFS: std::vector vs HashBag', color: '#f8fafc', font: { size: 16, weight: 'bold' } },
+                        legend: { labels: { color: '#f8fafc' } }
+                    },
+                    scales: {
+                        y: { 
+                            title: { display: true, text: 'Tiempo (ms)', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTauAnalysisChart(graph) {
+            destroyChart('tau-analysis');
+            const ctx = document.getElementById('chart-tau-analysis').getContext('2d');
+            
+            const dataForGraph = dashboardData.tau_analysis.filter(t => t.graph === graph);
+            const taus = dataForGraph.map(t => t.tau).sort((a,b) => a-b);
+            const times = taus.map(tau => {
+                const match = dataForGraph.find(t => t.tau === tau);
+                return match ? match.time_ms : null;
+            });
+            
+            charts['tau-analysis'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: taus.map(t => `Tau = ${t}`),
+                    datasets: [{
+                        label: 'VGC Tiempo de Ejecución (ms)',
+                        data: times,
+                        borderColor: '#ef4444',
+                        backgroundColor: '#ef4444',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Impacto del Umbral Tau en VGC (Hilos Máximos)', color: '#f8fafc', font: { size: 16, weight: 'bold' } },
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            title: { display: true, text: 'Tiempo (ms)', color: '#94a3b8' },
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

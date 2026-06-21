@@ -25,10 +25,16 @@ int main() {
     save_graph(Graph::generate_knn(100000, 10), "datasets/synthetic/graph_100k.txt");
     
     // 1M
-    save_graph(Graph::generate_knn(1000000, 5), "datasets/synthetic/graph_1M.txt");
+    save_graph(Graph::generate_knn(1000000, 10), "datasets/synthetic/graph_1M.txt");
+
+    // 10M - Masivo para llevar al limite (aprox 50M-100M aristas)
+    std::cout << "Generando grafo masivo (10M nodos)..." << std::endl;
+    save_graph(Graph::generate_knn(10000000, 5), "datasets/synthetic/graph_10M.txt");
     
     // Lattice (Gran diámetro)
+    std::cout << "Generando lattices..." << std::endl;
     save_graph(Graph::generate_lattice(100, 100), "datasets/synthetic/lattice_10k.txt");
+    save_graph(Graph::generate_lattice(1000, 1000), "datasets/synthetic/lattice_1M.txt");
 
     std::cout << "[OK] Datasets generados en datasets/synthetic/" << std::endl;
     return 0;

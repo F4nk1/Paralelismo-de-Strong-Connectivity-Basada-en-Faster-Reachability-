@@ -46,10 +46,11 @@ mkdir -p results/csv results/plots
 ./build/parallel_scc
 echo "OK: Datos experimentales generados en results/csv/."
 
-# 6. Generación de Gráficos Científicos
-echo -e "\n[6/6] Generando figuras y gráficas..."
+# 6. Generación de Gráficos y Data de Dashboard
+echo -e "\n[6/6] Generando figuras y base de datos del dashboard..."
 python3 scripts/generate_plots.py
-echo "OK: Gráficos guardados en results/plots/."
+python3 scripts/generate_dashboard_data.py
+echo "OK: Gráficos y datos del dashboard guardados."
 
 echo -e "\n======================================================="
 echo "  ¡PROCESO COMPLETADO EXITOSAMENTE!"

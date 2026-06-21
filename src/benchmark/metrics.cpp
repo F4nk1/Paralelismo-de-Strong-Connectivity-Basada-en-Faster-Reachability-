@@ -45,11 +45,11 @@ void save_tau_analysis_to_csv(const std::vector<Result>& results, const std::str
 
 void save_hashbag_comparison_to_csv(const std::vector<Result>& results, const std::string& filename) {
     std::ofstream file(filename);
-    file << "graph,structure,time_ms\n";
+    file << "graph,structure,time_ms,threads\n";
     for (const auto& res : results) {
         if (res.algorithm == "BGSS (Vector)" || res.algorithm == "BGSS (HashBag)") {
             std::string structure = (res.algorithm == "BGSS (Vector)") ? "std::vector" : "HashBag";
-            file << res.graph_name << "," << structure << "," << res.time_ms << "\n";
+            file << res.graph_name << "," << structure << "," << res.time_ms << "," << res.threads << "\n";
         }
     }
 }

@@ -11,11 +11,18 @@ Graph Graph::load_from_file(const std::string& filename) {
 
     std::vector<std::pair<int, int>> edges;
     int max_v = -1;
-    int u, v;
+    std::string line;
     
-    while (file >> u >> v) {
-        edges.push_back({u, v});
-        max_v = std::max({max_v, u, v});
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        std::stringstream ss(line);
+        int u, v;
+        if (ss >> u >> v) {
+            edges.push_back({u, v});
+            max_v = std::max({max_v, u, v});
+        }
     }
 
     Graph g;

@@ -13,8 +13,8 @@ make -j$(nproc)
 cd ..
 
 # 2. Generar datasets si no existen
-if [ ! -f "datasets/synthetic/graph_100k.txt" ]; then
-    echo "Generando datasets..."
+if [ ! -f "datasets/synthetic/graph_10M.txt" ]; then
+    echo "Generando datasets masivos..."
     ./build/gen_data
 fi
 

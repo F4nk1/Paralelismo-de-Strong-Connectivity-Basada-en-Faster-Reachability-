@@ -16,11 +16,16 @@ if [ ! -f p2p-Gnutella08.txt ]; then
     echo "p2p-Gnutella08.txt descargado."
 fi
 
-# Renombrar para que coincidan con config/datasets.json si es necesario
-cp wiki-Vote.txt web_graph.txt
-cp p2p-Gnutella08.txt social_graph.txt
-# Generar uno de red de carreteras sintético si no hay uno pequeño a mano
-# (O simplemente copiar uno de los otros para la demo)
-cp wiki-Vote.txt road_network.txt
+# email-EuAll
+if [ ! -f email-EuAll.txt ]; then
+    curl -L https://snap.stanford.edu/data/email-EuAll.txt.gz | gunzip > email-EuAll.txt
+    echo "email-EuAll.txt descargado."
+fi
+
+# soc-Epinions1
+if [ ! -f soc-Epinions1.txt ]; then
+    curl -L https://snap.stanford.edu/data/soc-Epinions1.txt.gz | gunzip > soc-Epinions1.txt
+    echo "soc-Epinions1.txt descargado."
+fi
 
 echo "[OK] Datasets reales listos en datasets/real/"

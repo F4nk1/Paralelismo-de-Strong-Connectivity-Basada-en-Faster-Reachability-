@@ -67,6 +67,47 @@ void parallel_bfs_optimized(int pivot, const graph::Graph& g, const std::vector<
     }
 }
 
+// BFS Paralelo con HashBag (para la comparación std::vector vs HashBag)
+void parallel_bfs_hashbag(int pivot, const graph::Graph& g, const std::vector<char>& handled, 
+                          std::vector<char>& visited, std::vector<int>& reached_list) {
+    reached_list.clear();
+    if (handled[pivot] || visited[pivot]) return;
+
+    visited[pivot] = 1;
+    reached_list.push_back(pivot);
+    
+    std::vector<int> frontier;
+    frontier.push_back(pivot);
+
+    while (!frontier.empty()) {
+        HashBag<int> next_frontier(g.num_vertices);
+
+        #pragma omp parallel for
+        for (size_t i = 0; i < (int)frontier.size(); ++i) {
+            int u = frontier[i];
+            for (long long j = g.offsets[u]; j < g.offsets[u + 1]; ++j) {
+                int v = g.neighbors[j];
+                if (!handled[v] && !visited[v]) {
+                    if (__sync_bool_compare_and_swap(&visited[v], 0, 1)) {
+                        next_frontier.insert(v);
+                    }
+                }
+            }
+        }
+
+        size_t next_size = next_frontier.get_size();
+        if (next_size == 0) break;
+
+        frontier.resize(next_size);
+        const auto& data = next_frontier.get_data();
+        #pragma omp parallel for
+        for (size_t i = 0; i < (int)next_size; ++i) {
+            frontier[i] = data[i];
+        }
+        reached_list.insert(reached_list.end(), frontier.begin(), frontier.end());
+    }
+}
+
 std::vector<int> BGSS::find_sccs(const graph::Graph& g, bool use_hashbag, benchmark::Breakdown* breakdown) {
     auto total_start = std::chrono::high_resolution_clock::now();
     int n = g.num_vertices;
@@ -177,8 +218,13 @@ std::vector<int> BGSS::find_sccs(const graph::Graph& g, bool use_hashbag, benchm
         std::vector<int> reached_desc;
         std::vector<int> reached_anc;
 
-        parallel_bfs_optimized(big_pivot, g, handled, visited_desc, reached_desc);
-        parallel_bfs_optimized(big_pivot, g_rev, handled, visited_anc, reached_anc);
+        if (use_hashbag) {
+            parallel_bfs_hashbag(big_pivot, g, handled, visited_desc, reached_desc);
+            parallel_bfs_hashbag(big_pivot, g_rev, handled, visited_anc, reached_anc);
+        } else {
+            parallel_bfs_optimized(big_pivot, g, handled, visited_desc, reached_desc);
+            parallel_bfs_optimized(big_pivot, g_rev, handled, visited_anc, reached_anc);
+        }
 
         #pragma omp parallel for
         for (int i = 0; i < (int)reached_anc.size(); i++) {

@@ -5,8 +5,9 @@
     "datasets/synthetic/graph_100k.txt"
   ],
   "real": [
-    "datasets/real/web_graph.txt",
-    "datasets/real/social_graph.txt",
-    "datasets/real/road_network.txt"
+    "datasets/real/wiki-Vote.txt",
+    "datasets/real/p2p-Gnutella08.txt",
+    "datasets/real/email-EuAll.txt",
+    "datasets/real/soc-Epinions1.txt"
   ]
 }

@@ -6,8 +6,11 @@ bin/
 *.out
 
 # Resultados de experimentos (evitar subir datos locales masivos)
-results/*.csv
-results/figures/*.png
+results/
+!results/**/.gitkeep
+
+# Datasets (descargados y generados dinámicamente)
+datasets/
 
 # Archivos de sistema y editores
 .vscode/
