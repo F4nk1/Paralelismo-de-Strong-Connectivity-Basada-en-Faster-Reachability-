@@ -155,6 +155,60 @@ def generate_plots():
             plt.savefig('results/plots/hashbag_vs_vector.png', dpi=300)
             plt.close()
 
+    # 6. Análisis de AP-BGSS: Comparación de Estrategias y Reducción Progresiva
+    ap_history_csv = 'results/csv/ap_bgss_pivot_history.csv'
+    if os.path.exists(ap_history_csv):
+        print("[6/7] Generando gráficos de análisis AP-BGSS (Historia de Pivotes)...")
+        df_ap = pd.read_csv(ap_history_csv)
+        if not df_ap.empty:
+            # Filtrar por mayor número de hilos para ver la reducción
+            max_threads_ap = df_ap['threads'].max()
+            df_ap_subset = df_ap[df_ap['threads'] == max_threads_ap]
+
+            # Graficar reducción progresiva de vértices
+            plt.figure(figsize=(12, 7))
+            sns.lineplot(data=df_ap_subset, x='pivot_index', y='remaining_vertices', hue='strategy', style='graph', markers=True, dashes=False)
+            plt.xlabel('Índice de Pivote', fontsize=12)
+            plt.ylabel('Vértices Restantes (No Procesados)', fontsize=12)
+            plt.title(f'Reducción Progresiva del Grafo ({max_threads_ap} hilos)', fontsize=14, fontweight='bold')
+            plt.grid(True, which="both", ls="--")
+            plt.tight_layout()
+            plt.savefig('results/plots/ap_bgss_reduction_progress.png', dpi=300)
+            plt.close()
+
+            # Graficar trabajo acumulado de reachability (nodos visitados)
+            # Primero calculamos el trabajo acumulado por estrategia/grafo
+            df_ap_subset = df_ap_subset.sort_values(by=['graph', 'strategy', 'pivot_index'])
+            df_ap_subset['cumulative_work'] = df_ap_subset.groupby(['graph', 'strategy'])['reachability_work'].cumsum()
+
+            plt.figure(figsize=(12, 7))
+            sns.lineplot(data=df_ap_subset, x='pivot_index', y='cumulative_work', hue='strategy', style='graph', markers=True, dashes=False)
+            plt.xlabel('Índice de Pivote', fontsize=12)
+            plt.ylabel('Trabajo Acumulado (Vértices Visitados)', fontsize=12)
+            plt.title(f'Trabajo Acumulado de Reachability ({max_threads_ap} hilos)', fontsize=14, fontweight='bold')
+            plt.grid(True, which="both", ls="--")
+            plt.tight_layout()
+            plt.savefig('results/plots/ap_bgss_reachability_work.png', dpi=300)
+            plt.close()
+
+    if os.path.exists(bench_csv):
+        print("[7/7] Generando gráficos de comparación AP-BGSS vs BGSS...")
+        df_bench = pd.read_csv(bench_csv)
+        # Comparar AP-BGSS-SUM, AP-BGSS-MAX, AP-BGSS-MUL vs BGSS original
+        df_comp = df_bench[df_bench['algorithm'].isin(['BGSS-BigSCC', 'BGSS-MultiSearch', 'AP-BGSS-SUM', 'AP-BGSS-MAX', 'AP-BGSS-MUL'])]
+        if not df_comp.empty:
+            max_th = df_comp['threads'].max()
+            df_comp_max = df_comp[df_comp['threads'] == max_th]
+            
+            plt.figure(figsize=(14, 8))
+            sns.barplot(data=df_comp_max, x='graph', y='time_ms', hue='algorithm', palette='Set2')
+            plt.ylabel('Tiempo (ms)', fontsize=12)
+            plt.title(f'Comparativa de Rendimiento: AP-BGSS vs BGSS Original ({max_th} hilos)', fontsize=14, fontweight='bold')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig('results/plots/ap_bgss_vs_bgss.png', dpi=300)
+            plt.close()
+
     print("[OK] Todos los gráficos han sido actualizados en results/plots/")
 
 if __name__ == "__main__":

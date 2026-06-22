@@ -11,6 +11,7 @@
 #include "scc/bgss.hpp"
 #include "scc/multi_bgss.hpp"
 #include "scc/vgc.hpp"
+#include "scc/ap_bgss.hpp"
 #include "benchmark/metrics.hpp"
 #include "json.hpp"
 
@@ -63,6 +64,7 @@ int main(int argc, char** argv) {
     int default_tau = params["default_tau"];
 
     vector<benchmark::Result> all_results;
+    vector<scc::AP_PivotMetric> all_ap_metrics;
 
     cout << "=======================================================" << endl;
     cout << "  SISTEMA DE EXPERIMENTACION CIENTIFICA: SCC DUAL      " << endl;
@@ -205,6 +207,72 @@ int main(int argc, char** argv) {
             res_vgc.breakdown = bd_vgc;
             all_results.push_back(res_vgc);
             print_gbbs_style_report(res_vgc);
+
+            // 2.5 AP-BGSS (SUM)
+            benchmark::Breakdown bd_ap_sum;
+            start = chrono::high_resolution_clock::now();
+            auto scc_ap_sum = scc::AP_BGSS::find_sccs(g, scc::PivotStrategy::SUM, false, &bd_ap_sum, &all_ap_metrics, g_name);
+            end = chrono::high_resolution_clock::now();
+            t_ms = chrono::duration<double, milli>(end - start).count();
+
+            benchmark::Result res_ap_sum;
+            res_ap_sum.algorithm = "AP-BGSS-SUM";
+            res_ap_sum.graph_name = g_name;
+            res_ap_sum.vertices = g.num_vertices;
+            res_ap_sum.edges = g.num_edges;
+            res_ap_sum.threads = threads;
+            res_ap_sum.time_ms = t_ms;
+            res_ap_sum.scc_count = count_sccs(scc_ap_sum);
+            res_ap_sum.max_scc_size = get_max_scc_size(scc_ap_sum);
+            res_ap_sum.throughput = (g.num_edges / 1000.0) / t_ms;
+            res_ap_sum.correct = (res_ap_sum.scc_count == res_tarjan.scc_count);
+            res_ap_sum.breakdown = bd_ap_sum;
+            all_results.push_back(res_ap_sum);
+            print_gbbs_style_report(res_ap_sum);
+
+            // 2.6 AP-BGSS (MAX)
+            benchmark::Breakdown bd_ap_max;
+            start = chrono::high_resolution_clock::now();
+            auto scc_ap_max = scc::AP_BGSS::find_sccs(g, scc::PivotStrategy::MAX, false, &bd_ap_max, &all_ap_metrics, g_name);
+            end = chrono::high_resolution_clock::now();
+            t_ms = chrono::duration<double, milli>(end - start).count();
+
+            benchmark::Result res_ap_max;
+            res_ap_max.algorithm = "AP-BGSS-MAX";
+            res_ap_max.graph_name = g_name;
+            res_ap_max.vertices = g.num_vertices;
+            res_ap_max.edges = g.num_edges;
+            res_ap_max.threads = threads;
+            res_ap_max.time_ms = t_ms;
+            res_ap_max.scc_count = count_sccs(scc_ap_max);
+            res_ap_max.max_scc_size = get_max_scc_size(scc_ap_max);
+            res_ap_max.throughput = (g.num_edges / 1000.0) / t_ms;
+            res_ap_max.correct = (res_ap_max.scc_count == res_tarjan.scc_count);
+            res_ap_max.breakdown = bd_ap_max;
+            all_results.push_back(res_ap_max);
+            print_gbbs_style_report(res_ap_max);
+
+            // 2.7 AP-BGSS (MUL)
+            benchmark::Breakdown bd_ap_mul;
+            start = chrono::high_resolution_clock::now();
+            auto scc_ap_mul = scc::AP_BGSS::find_sccs(g, scc::PivotStrategy::MUL, false, &bd_ap_mul, &all_ap_metrics, g_name);
+            end = chrono::high_resolution_clock::now();
+            t_ms = chrono::duration<double, milli>(end - start).count();
+
+            benchmark::Result res_ap_mul;
+            res_ap_mul.algorithm = "AP-BGSS-MUL";
+            res_ap_mul.graph_name = g_name;
+            res_ap_mul.vertices = g.num_vertices;
+            res_ap_mul.edges = g.num_edges;
+            res_ap_mul.threads = threads;
+            res_ap_mul.time_ms = t_ms;
+            res_ap_mul.scc_count = count_sccs(scc_ap_mul);
+            res_ap_mul.max_scc_size = get_max_scc_size(scc_ap_mul);
+            res_ap_mul.throughput = (g.num_edges / 1000.0) / t_ms;
+            res_ap_mul.correct = (res_ap_mul.scc_count == res_tarjan.scc_count);
+            res_ap_mul.breakdown = bd_ap_mul;
+            all_results.push_back(res_ap_mul);
+            print_gbbs_style_report(res_ap_mul);
         }
     }
 
@@ -237,6 +305,7 @@ int main(int argc, char** argv) {
     benchmark::save_scalability_to_csv(all_results, "results/csv/scalability.csv");
     benchmark::save_tau_analysis_to_csv(all_results, "results/csv/tau_analysis.csv");
     benchmark::save_hashbag_comparison_to_csv(all_results, "results/csv/hashbag_vs_vector.csv");
+    scc::save_ap_metrics_to_csv(all_ap_metrics, "results/csv/ap_bgss_pivot_history.csv");
     
     cout << "\n[OK] Benchmarking finalizado. Archivos generados en results/csv/" << endl;
 

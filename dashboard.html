@@ -251,6 +251,54 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* AP-BGSS table and chart styling */
+        .metrics-summary-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+        }
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            color: var(--text-primary);
+        }
+        .ap-table th, .ap-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .ap-table th {
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .ap-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        .chart-container-img {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            width: 100%;
+        }
+        .chart-container-img h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -309,6 +357,7 @@
         <button class="tab-btn" onclick="switchTab(event, 'tab-breakdown')">Desglose de Fases (Breakdown)</button>
         <button class="tab-btn" onclick="switchTab(event, 'tab-vector-hashbag')">Vector vs. HashBag</button>
         <button class="tab-btn" onclick="switchTab(event, 'tab-tau-vgc')">Análisis de Tau (VGC)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-ap-bgss')">Pivotes Adaptativos (AP-BGSS)</button>
     </div>
 
     <!-- Pestaña 1: Tiempo & Rendimiento -->
@@ -356,6 +405,46 @@
     <div id="tab-tau-vgc" class="tab-content">
         <div class="chart-container">
             <canvas id="chart-tau-analysis"></canvas>
+        </div>
+    </div>
+
+    <!-- Pestaña 6: Adaptive Pivot BGSS (AP-BGSS) -->
+    <div id="tab-ap-bgss" class="tab-content">
+        <div class="metrics-summary-container">
+            <h3 style="margin-bottom: 1rem; color: var(--accent-blue);">Comparativa de Estrategias AP-BGSS vs BGSS Original</h3>
+            <div style="overflow-x: auto;">
+                <table class="ap-table" id="ap-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Algoritmo / Estrategia</th>
+                            <th>Tiempo de Ejecución (ms)</th>
+                            <th>Aceleración vs BGSS-MultiSearch</th>
+                            <th>Max SCC Detectado</th>
+                            <th>¿Correcto?</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ap-summary-table-body">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="charts-row" style="margin-top: 2rem;">
+            <div class="chart-container-img">
+                <h4>Comparativa de Rendimiento Total: AP-BGSS vs BGSS Original</h4>
+                <img id="img-ap-vs-bgss" src="results/plots/ap_bgss_vs_bgss.png" alt="Comparativa AP-BGSS vs BGSS" style="width: 100%; border-radius: 8px; margin-top: 1rem; border: 1px solid var(--border-color);">
+            </div>
+        </div>
+        <div class="charts-row" style="margin-top: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="chart-container-img">
+                <h4>Reducción Progresiva del Grafo (Unhandled Vertices)</h4>
+                <img id="img-ap-reduction" src="results/plots/ap_bgss_reduction_progress.png" alt="Reducción Progresiva del Grafo" style="width: 100%; border-radius: 8px; margin-top: 1rem; border: 1px solid var(--border-color);">
+            </div>
+            <div class="chart-container-img">
+                <h4>Trabajo Acumulado de Reachability (Visited Vertices)</h4>
+                <img id="img-ap-work" src="results/plots/ap_bgss_reachability_work.png" alt="Trabajo Acumulado de Reachability" style="width: 100%; border-radius: 8px; margin-top: 1rem; border: 1px solid var(--border-color);">
+            </div>
         </div>
     </div>
 
@@ -492,6 +581,8 @@
                 renderChartsForTab('tab-vector-hashbag');
             } else if (activeTabName.includes('Tau')) {
                 renderChartsForTab('tab-tau-vgc');
+            } else if (activeTabName.includes('Pivotes') || activeTabName.includes('AP-BGSS')) {
+                renderChartsForTab('tab-ap-bgss');
             }
         }
 
@@ -512,6 +603,8 @@
                 renderVectorHashbagChart(currentGraph);
             } else if (tabId === 'tab-tau-vgc') {
                 renderTauAnalysisChart(currentGraph);
+            } else if (tabId === 'tab-ap-bgss') {
+                renderApSummaryTable(currentGraph, currentThreads);
             }
         }
 
@@ -1068,6 +1161,46 @@
                         }
                     }
                 }
+            });
+        }
+
+        function renderApSummaryTable(graph, threads) {
+            const container = document.getElementById('ap-summary-table-body');
+            container.innerHTML = '';
+            
+            const dataForGraph = dashboardData.benchmarks.filter(b => b.graph === graph);
+            
+            // Buscar tiempo base de BGSS-MultiSearch
+            const multiSearchVal = dataForGraph.find(b => b.threads === threads && b.algorithm === 'BGSS-MultiSearch');
+            const multiSearchTime = multiSearchVal ? multiSearchVal.time_ms : null;
+
+            const targets = ['BGSS-BigSCC', 'BGSS-MultiSearch', 'AP-BGSS-SUM', 'AP-BGSS-MAX', 'AP-BGSS-MUL'];
+            const rows = dataForGraph.filter(b => b.threads === threads && targets.includes(b.algorithm));
+
+            // Ordenar las filas según targets
+            rows.sort((a, b) => targets.indexOf(a.algorithm) - targets.indexOf(b.algorithm));
+
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                
+                let speedupText = 'N/A';
+                if (multiSearchTime && r.time_ms) {
+                    const speedup = multiSearchTime / r.time_ms;
+                    speedupText = `${speedup.toFixed(2)}x`;
+                }
+
+                // Resaltar algoritmos AP
+                const isAp = r.algorithm.includes('AP-BGSS');
+                const nameStyle = isAp ? 'font-weight: 600; color: var(--accent-green);' : '';
+
+                tr.innerHTML = `
+                    <td style="${nameStyle}">${r.algorithm}</td>
+                    <td>${r.time_ms ? r.time_ms.toFixed(2) + ' ms' : 'N/A'}</td>
+                    <td>${speedupText}</td>
+                    <td>${r.max_scc_size ? r.max_scc_size.toLocaleString() : 'N/A'}</td>
+                    <td><span style="color: ${r.correct ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: bold;">${r.correct ? 'SÍ' : 'NO'}</span></td>
+                `;
+                container.appendChild(tr);
             });
         }
     </script>

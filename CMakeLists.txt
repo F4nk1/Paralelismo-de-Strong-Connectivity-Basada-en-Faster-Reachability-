@@ -16,6 +16,7 @@ add_executable(parallel_scc
     src/scc/vgc.cpp
     src/scc/multi_bgss.cpp
     src/scc/hashbag.cpp
+    src/scc/ap_bgss.cpp
     src/benchmark/metrics.cpp
 )
 
@@ -34,6 +35,7 @@ add_executable(test_correctness
     src/scc/bgss.cpp
     src/scc/vgc.cpp
     src/scc/multi_bgss.cpp
+    src/scc/ap_bgss.cpp
 )
 target_link_libraries(test_correctness OpenMP::OpenMP_CXX)
 

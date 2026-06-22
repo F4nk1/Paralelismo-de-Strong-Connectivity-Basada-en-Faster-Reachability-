@@ -10,7 +10,8 @@ def generate_data():
         'breakdown': 'results/csv/breakdown.csv',
         'scalability': 'results/csv/scalability.csv',
         'tau_analysis': 'results/csv/tau_analysis.csv',
-        'hashbag_vs_vector': 'results/csv/hashbag_vs_vector.csv'
+        'hashbag_vs_vector': 'results/csv/hashbag_vs_vector.csv',
+        'ap_bgss_pivot_history': 'results/csv/ap_bgss_pivot_history.csv'
     }
     
     for key, filepath in csv_files.items():

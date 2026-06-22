@@ -7,6 +7,7 @@
 #include "scc/bgss.hpp"
 #include "scc/vgc.hpp"
 #include "scc/multi_bgss.hpp"
+#include "scc/ap_bgss.hpp"
 
 using namespace std;
 
@@ -42,16 +43,25 @@ void test_graph(const string& name, const graph::Graph& g) {
     auto scc_bgss = scc::BGSS::find_sccs(g);
     auto scc_vgc = scc::VGC::run_parallel_scc(g, 10); // Tau pequeño para forzar paralelo
     auto scc_multi = scc::MultiBGSS::find_sccs(g);
+    auto scc_ap_sum = scc::AP_BGSS::find_sccs(g, scc::PivotStrategy::SUM);
+    auto scc_ap_max = scc::AP_BGSS::find_sccs(g, scc::PivotStrategy::MAX);
+    auto scc_ap_mul = scc::AP_BGSS::find_sccs(g, scc::PivotStrategy::MUL);
     
     bool bgss_ok = compare_sccs(scc_tarjan, scc_bgss);
     bool vgc_ok = compare_sccs(scc_tarjan, scc_vgc);
     bool multi_ok = compare_sccs(scc_tarjan, scc_multi);
+    bool ap_sum_ok = compare_sccs(scc_tarjan, scc_ap_sum);
+    bool ap_max_ok = compare_sccs(scc_tarjan, scc_ap_max);
+    bool ap_mul_ok = compare_sccs(scc_tarjan, scc_ap_mul);
     
-    cout << "  BGSS:  " << (bgss_ok ? "PASSED" : "FAILED") << endl;
-    cout << "  VGC:   " << (vgc_ok ? "PASSED" : "FAILED") << endl;
-    cout << "  Multi: " << (multi_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  BGSS:   " << (bgss_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  VGC:    " << (vgc_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  Multi:  " << (multi_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  AP-SUM: " << (ap_sum_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  AP-MAX: " << (ap_max_ok ? "PASSED" : "FAILED") << endl;
+    cout << "  AP-MUL: " << (ap_mul_ok ? "PASSED" : "FAILED") << endl;
     
-    if (!bgss_ok || !vgc_ok || !multi_ok) {
+    if (!bgss_ok || !vgc_ok || !multi_ok || !ap_sum_ok || !ap_max_ok || !ap_mul_ok) {
         exit(1);
     }
 }
